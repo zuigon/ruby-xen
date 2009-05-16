@@ -2,3 +2,7 @@
 pkg
 Capfile
 config/deploy.rb
+tags
+.autotest
+specdoc
+.*.swp

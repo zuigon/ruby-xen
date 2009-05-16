@@ -121,7 +121,7 @@ module Xen
 
   # Virtual Block Device
   #
-  # We're only supporting Logical Volumes. No loopback devices.
+  # Logical Volumes (type=:lvm) and Loopback devices (type=:loop)
   #
   # http://wiki.xensource.com/xenwiki/XenStorage
   #
@@ -131,27 +131,55 @@ module Xen
   #                   'phy:xendisks/example-swap,sda2,w',
   #                   'phy:assets/example-assets,sdb1,w' ]
   class Xen::Vbd
-    attr_accessor :name, :volume_group, :domu, :mode
-    def initialize(name, volume_group, domu, mode='w')
-      @name, @volume_group, @domu, @mode = name, volume_group, domu, mode
+    attr_accessor :name, :volume_group, :domu, :mode, :type
+    def initialize(opts={})
+      return false unless opts[:name] and opts[:domu]
+      @name = opts[:name] # LV name, Loopback file path
+      @domu = opts[:domu]
+      @volume_group = opts[:volume_group] if opts[:type] = :lvm
+      @mode = opts[:mode] || 'w'
+      @type = opts[:type] || :lvm
     end
 
     def self.from_str(value)
       dom0, domu, mode = value.split(',')
-      volume_group, name = dom0.split(/[\/:]/).slice(-2, 2)
-      new(name, volume_group, domu, mode)
+      case dom0
+        when /^phy:/
+          volume_group, name = dom0.split(/[\/:]/).slice(-2, 2)
+          type = :lvm
+        when /^tap:aio:/
+          name = dom0.split(/:/)[-1]
+          type = :loop
+      end
+          
+      new(:name => name, :volume_group => volume_group, :domu => domu, :mode => mode, :type => type)
     end
   
     def size
-      Xen::Command.lv_size(@volume_group, @name)
+      case type
+        when :lvm
+          Xen::Command.lv_size(@volume_group, @name)
+        when :loop
+          Xen::Command.loop_size(path)
+      end
     end
     
     def path
-      "/dev/#{volume_group}/#{name}"
+      case type
+        when :lvm
+          "/dev/#{volume_group}/#{name}"
+        when :loop
+          name
+      end
     end
     
     def to_str
-      "phy:#{volume_group}/#{name},#{domu},#{mode}"
+      case type
+        when :lvm
+          "phy:#{volume_group}/#{name},#{domu},#{mode}"
+        when :loop
+          "tap:aio:#{path},#{domu},#{mode}"
+      end
     end 
   end
   

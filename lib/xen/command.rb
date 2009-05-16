@@ -34,6 +34,13 @@ module Xen
       `#{cmd}`.strip
     end
   
+    # Return the size of a loopback volume in gigabytes
+    # Note that 'du' rounds sizes up to the nearest GB
+    def self.loop_size(path)
+      cmd = "du --block-size=1G #{path} | cut -f1"
+      `#{cmd}`.strip
+    end
+
     # Return list of logical volumes
     def self.lv_list(vg_name)
       cmd = "lvs --noheadings --nosuffix --options vg_name,lv_name,lv_size --units g #{vg_name}"
