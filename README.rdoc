@@ -18,7 +18,7 @@ ruby-xen can also be used by ruby code or from irb.
 
 == FEATURES/PROBLEMS:
 
-* FIX (list of features or problems)
+* Remote XEN servers (net/ssh)
 
 == SYNOPSIS:
 
